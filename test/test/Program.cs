@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Diagnostics;
+
 
 public struct MinidumpHeader
 {
@@ -66,9 +66,125 @@ public struct ThreadInfo
     public uint unknown6;
 }
 
+public struct ThreadInfoStream
+{
+    public uint test1;
+    public uint test2;
+    public uint test3;
+    public ThreadInfoStream_Element[] Threads;
+}
+
+public struct ThreadInfoStream_Element 
+{
+    public IntPtr ThreadId;
+    public uint Dump;
+    public uint ExitStatus;
+    public IntPtr CreateTime;
+    public IntPtr unknown3; // ExitTime
+    public IntPtr unknown4; // KernelTime
+    public IntPtr UserTime;
+    public IntPtr StartAddress;
+    public IntPtr Affinity;
+}
+
+
 class test
 {
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
+
+    private static T MarshalBytesTo<T>(byte[] bytes)
+    {
+        GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+        T theStructure = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
+        handle.Free();
+        return theStructure;
+    }
+
+
+    public static void ParseModuleListStream(List<MinidumpStreamDirectoryEntry> streamInfoList, FileStream fs)
+    {
+        foreach (var streamInfo in streamInfoList)
+        {
+            string streamTypeName = GetStreamTypeName(streamInfo.StreamType);
+            if (streamTypeName == "ModuleListStream")
+            {
+                /*
+                
+                fs.Seek(streamInfo.Location, SeekOrigin.Begin);
+                byte[] tl_data = new byte[4];
+                fs.Read(tl_data, 0, tl_data.Length);
+                ThreadListStream tl_stream = MarshalBytesTo<ThreadListStream>(tl_data);
+                Console.WriteLine("\n[+] Reading ThreadListStream at 0x" + streamInfo.Location.ToString("X"));
+                Console.WriteLine("[+] \tNumberOfThreads:\t" + tl_stream.NumberOfThreads);
+
+                // Console.WriteLine(Marshal.SizeOf(typeof(ThreadInfo)));
+                for (int i = 0; i < (int)tl_stream.NumberOfThreads; i++)
+                {
+                    Console.WriteLine("[+]\tThread " + (i + 1));
+                    fs.Seek((streamInfo.Location + 4 + i * Marshal.SizeOf(typeof(ThreadInfo))), SeekOrigin.Begin);
+                    tl_data = new byte[Marshal.SizeOf(typeof(ThreadInfo))];
+                    fs.Read(tl_data, 0, tl_data.Length);
+                    ThreadInfo t_info = MarshalBytesTo<ThreadInfo>(tl_data);
+                    Console.WriteLine("[+]\t  ThreadId:\t\t0x" + t_info.ThreadId.ToString("X"));
+                    Console.WriteLine("[+]\t  SuspendCount:\t\t" + t_info.SuspendCount);
+                    Console.WriteLine("[+]\t  PriorityClass:\t" + t_info.PriorityClass);
+                    Console.WriteLine("[+]\t  Priority:\t\t" + t_info.Priority);
+                    Console.WriteLine("[+]\t  Teb:\t\t\t0x" + t_info.Teb.ToString("X"));
+                    Console.WriteLine("[+]\t  unknown1:\t\t" + t_info.unknown1);
+                    Console.WriteLine("[+]\t  unknown2:\t\t" + t_info.unknown2);
+                    Console.WriteLine("[+]\t  unknown3:\t\t" + t_info.unknown3);
+                    Console.WriteLine("[+]\t  unknown4:\t\t" + t_info.unknown4);
+                    Console.WriteLine("[+]\t  unknown5:\t\t" + t_info.unknown5);
+                    Console.WriteLine("[+]\t  unknown6:\t\t" + t_info.unknown6);
+                }
+                */
+            }
+        }
+        // Console.WriteLine("Size: " + (4 + Marshal.SizeOf(typeof(ThreadInfo)) * 7));
+    }
+
+
+    public static void ParseThreadInfoListStream(List<MinidumpStreamDirectoryEntry> streamInfoList, FileStream fs)
+    {
+        foreach (var streamInfo in streamInfoList)
+        {
+            string streamTypeName = GetStreamTypeName(streamInfo.StreamType);
+            if (streamTypeName == "ThreadInfoListStream")
+            {
+                fs.Seek(streamInfo.Location, SeekOrigin.Begin);
+                byte[] tis_data = new byte[12];
+                fs.Read(tis_data, 0, tis_data.Length);
+                ThreadInfoStream tis_stream = MarshalBytesTo<ThreadInfoStream>(tis_data);
+                /*
+                Console.WriteLine("test1: " + tis_stream.test1.ToString("X"));
+                Console.WriteLine("test2: " + tis_stream.test2.ToString("X"));
+                Console.WriteLine("test3: " + tis_stream.test3.ToString("X"));
+                */
+                if (tis_stream.test1 == 12) {
+                    Console.WriteLine("\n[+] Reading ThreadInfoListStream at 0x" + streamInfo.Location.ToString("X"));
+                    int number_threads = (int)tis_stream.test3;
+                    Console.WriteLine("[+]\tNumberOfThreads: \t" + number_threads);
+                    for (int i = 0; i < number_threads; i++)
+                    {
+                        Console.WriteLine("[+]\tThread " + (i + 1));
+                        fs.Seek((streamInfo.Location + 12 + i * Marshal.SizeOf(typeof(ThreadInfoStream_Element))), SeekOrigin.Begin);
+                        byte[] tis_element_data = new byte[Marshal.SizeOf(typeof(ThreadInfoStream_Element))];
+                        fs.Read(tis_element_data, 0, tis_element_data.Length);
+                        ThreadInfoStream_Element tis_element = MarshalBytesTo<ThreadInfoStream_Element>(tis_element_data);
+                        Console.WriteLine("[+]\t  ThreadId:\t\t0x" + tis_element.ThreadId.ToString("X"));
+                        Console.WriteLine("[+]\t  Dump:\t\t\t0x" + tis_element.Dump.ToString("X"));
+                        Console.WriteLine("[+]\t  ExitStatus:\t\t0x" + tis_element.ExitStatus.ToString("X"));
+                        Console.WriteLine("[+]\t  CreateTime:\t\t0x" + tis_element.CreateTime.ToString("X"));
+                        Console.WriteLine("[+]\t  ExitTime:\t\t0x" + tis_element.unknown3.ToString("X"));
+                        Console.WriteLine("[+]\t  KernelTime:\t\t0x" + tis_element.unknown4.ToString("X"));
+                        Console.WriteLine("[+]\t  UserTime:\t\t0x" + tis_element.UserTime.ToString("X"));
+                        Console.WriteLine("[+]\t  StartAddress:\t\t0x" + tis_element.StartAddress.ToString("X"));
+                        Console.WriteLine("[+]\t  Affinity:\t\t0x" + tis_element.Affinity.ToString("X"));
+                    }
+                }
+            }
+        }
+    }
 
 
     public static void ParseThreadListStream(List<MinidumpStreamDirectoryEntry> streamInfoList, FileStream fs)
@@ -82,21 +198,22 @@ class test
                 // byte[] tl_data = new byte[Marshal.SizeOf(typeof(ThreadListStream))];
                 // byte[] tl_data = new byte[streamInfo.Size];
                 byte[] tl_data = new byte[4];
-                fs.Read(tl_data, 0, 4);
+                fs.Read(tl_data, 0, tl_data.Length);
                 ThreadListStream tl_stream = MarshalBytesTo<ThreadListStream>(tl_data);
                 Console.WriteLine("\n[+] Reading ThreadListStream at 0x" + streamInfo.Location.ToString("X"));
-                Console.WriteLine("[+] \tNumberOfThreads:\t0x" + tl_stream.NumberOfThreads);           
-                
+                Console.WriteLine("[+] \tNumberOfThreads:\t" + tl_stream.NumberOfThreads);
+
                 // Console.WriteLine(Marshal.SizeOf(typeof(ThreadInfo)));
-                for (int i = 0; i < (int)tl_stream.NumberOfThreads; i++) {
-                    Console.WriteLine("[+]\tThread " + i);
+                for (int i = 0; i < (int)tl_stream.NumberOfThreads; i++)
+                {
+                    Console.WriteLine("[+]\tThread " + (i+1));
                     fs.Seek((streamInfo.Location + 4 + i * Marshal.SizeOf(typeof(ThreadInfo))), SeekOrigin.Begin);
                     tl_data = new byte[Marshal.SizeOf(typeof(ThreadInfo))];
                     fs.Read(tl_data, 0, tl_data.Length);
                     ThreadInfo t_info = MarshalBytesTo<ThreadInfo>(tl_data);
                     Console.WriteLine("[+]\t  ThreadId:\t\t0x" + t_info.ThreadId.ToString("X"));
                     Console.WriteLine("[+]\t  SuspendCount:\t\t" + t_info.SuspendCount);
-                    Console.WriteLine("[+]\t  PriorityClass:\t\t" + t_info.PriorityClass);
+                    Console.WriteLine("[+]\t  PriorityClass:\t" + t_info.PriorityClass);
                     Console.WriteLine("[+]\t  Priority:\t\t" + t_info.Priority);
                     Console.WriteLine("[+]\t  Teb:\t\t\t0x" + t_info.Teb.ToString("X"));
                     Console.WriteLine("[+]\t  unknown1:\t\t" + t_info.unknown1);
@@ -108,16 +225,7 @@ class test
                 }
             }
         }
-        Console.WriteLine("Size: " + (4 + Marshal.SizeOf(typeof(ThreadInfo))*7));
-    }
-
-
-    private static T MarshalBytesTo<T>(byte[] bytes)
-    {
-        GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
-        T theStructure = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
-        handle.Free();
-        return theStructure;
+        // Console.WriteLine("Size: " + (4 + Marshal.SizeOf(typeof(ThreadInfo)) * 7));
     }
 
 
@@ -172,7 +280,8 @@ class test
 
     static void Main(string[] args)
     {
-        string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_procdump.dmp"; // Ruta al archivo Minidump
+        // string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_procdump.dmp"; // Ruta al archivo Minidump
+        string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\lsass.exe.dmp";
         Console.WriteLine("[+] Minidump: " + minidumpFilePath);
 
         // Leer el archivo Minidump
@@ -208,20 +317,19 @@ class test
             streamInfoList = streamInfoList.OrderBy(x => x.Location).ToList();
 
             // Mostrar la información de los flujos
-            Console.WriteLine("[+] Reading Stream Directory content at 0x" + header.StreamDirectoryRva.ToString("X"));
+            Console.WriteLine("\n[+] Reading Stream Directory content at 0x" + header.StreamDirectoryRva.ToString("X"));
             foreach (var streamInfo in streamInfoList)
             {
                 if (streamInfo.Location != 0) {
                     string streamTypeName = GetStreamTypeName(streamInfo.StreamType);
-                    Console.WriteLine("[+] \tAddress: 0x" + streamInfo.Location.ToString("X4") + " - 0x" + (streamInfo.Location + streamInfo.Size - 1).ToString("X4") + " \t Size: " + streamInfo.Size + " \t Stream Type: " + streamTypeName);
+                    Console.WriteLine("[+] \tAddress: 0x" + streamInfo.Location.ToString("X4") + " - 0x" + (streamInfo.Location + streamInfo.Size - 1).ToString("X4") + " \t Size: " + streamInfo.Size + " \t Stream Type: " + streamTypeName + " (" + streamInfo.StreamType + ")");
                 }                
             }
             // Console.WriteLine("[+] Stream directory ends at: \t0x" + ((int)((int)header.StreamDirectoryRva + Marshal.SizeOf(typeof(MinidumpStreamDirectoryEntry)) * (int)header.NumberOfStreams)).ToString("X") );
-            
-            
             ParseSystemInfoStream(streamInfoList, fs);
-
             ParseThreadListStream(streamInfoList, fs);
+            ParseThreadInfoListStream(streamInfoList, fs);
+            // ParseModuleListStream(streamInfoList, fs);
         }
     }
 
