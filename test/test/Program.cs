@@ -87,6 +87,72 @@ public struct ThreadInfoStream_Element
     public IntPtr Affinity;
 }
 
+public struct ModuleListStream
+{
+    public uint NumberOFModules;
+    // public IntPtr test2;
+    // public uint test3;
+    public ModuleInfo[] Modules;
+}
+
+public struct ModuleInfo
+{
+    public IntPtr BaseAddress;
+    public uint Size;
+    public uint u1;
+    public uint Timestamp;
+    public uint PointerName;
+    public IntPtr u2;
+    public IntPtr u3;
+    public IntPtr u4;
+    public IntPtr u5;
+    public IntPtr u6;
+    public IntPtr u7;
+    public IntPtr u8;
+    public IntPtr u9;
+    public IntPtr u10;
+    public IntPtr u11;
+    public uint u12;
+}
+
+
+public struct MemoryInfoListStream
+{
+    public uint NumberOfEntries;  // Número de entradas en la lista de información de memoria
+    public MemoryInfo[] MemoryInfoEntries;  // Array de información sobre cada región de memoria
+}
+
+public struct MemoryInfo
+{
+    public IntPtr BaseAddress;  // Dirección base de la región de memoria
+    public IntPtr AllocationBase;  // Dirección base de la asignación de la región de memoria
+    public uint AllocationProtect;  // Protección de la asignación de la región de memoria
+    public uint RegionSize;  // Tamaño de la región de memoria
+    public uint State;  // Estado de la región de memoria
+    public uint Protect;  // Protección de la región de memoria
+    public uint Type;  // Tipo de la región de memoria
+}
+
+
+public struct Memory64ListStream
+{
+    public ulong NumberOfEntries;  // Número de entradas en la lista de información de memoria
+    public Memory64Info[] MemoryInfoEntries;  // Array de información sobre cada región de memoria
+}
+
+public struct Memory64Info
+{
+    public ulong BaseAddress;  // Dirección base de la región de memoria
+    public ulong AllocationBase;  // Dirección base de la asignación de la región de memoria
+    public uint AllocationProtect;  // Protección de la asignación de la región de memoria
+    public uint __alignment1;
+    public ulong RegionSize;  // Tamaño de la región de memoria
+    public uint State;  // Estado de la región de memoria
+    public uint Protect;  // Protección de la región de memoria
+    public uint Type;  // Tipo de la región de memoria
+    public uint __alignment2;
+}
+
 
 class test
 {
@@ -103,44 +169,46 @@ class test
 
     public static void ParseModuleListStream(List<MinidumpStreamDirectoryEntry> streamInfoList, FileStream fs)
     {
+        int moduleinfo_size = 108;
         foreach (var streamInfo in streamInfoList)
         {
             string streamTypeName = GetStreamTypeName(streamInfo.StreamType);
             if (streamTypeName == "ModuleListStream")
             {
-                /*
-                
+                Console.WriteLine("\n[+] Reading ModuleListStream at 0x" + streamInfo.Location.ToString("X"));
                 fs.Seek(streamInfo.Location, SeekOrigin.Begin);
-                byte[] tl_data = new byte[4];
-                fs.Read(tl_data, 0, tl_data.Length);
-                ThreadListStream tl_stream = MarshalBytesTo<ThreadListStream>(tl_data);
-                Console.WriteLine("\n[+] Reading ThreadListStream at 0x" + streamInfo.Location.ToString("X"));
-                Console.WriteLine("[+] \tNumberOfThreads:\t" + tl_stream.NumberOfThreads);
+                byte[] ml_data = new byte[4];
+                fs.Read(ml_data, 0, ml_data.Length);
+                ModuleListStream ml_stream = MarshalBytesTo<ModuleListStream>(ml_data);
+                int number_of_modules = (int)ml_stream.NumberOFModules;
+                Console.WriteLine("NumberOFModules: \t" + number_of_modules);
 
-                // Console.WriteLine(Marshal.SizeOf(typeof(ThreadInfo)));
-                for (int i = 0; i < (int)tl_stream.NumberOfThreads; i++)
+                for (int i = 0; i < number_of_modules; i++)
                 {
-                    Console.WriteLine("[+]\tThread " + (i + 1));
-                    fs.Seek((streamInfo.Location + 4 + i * Marshal.SizeOf(typeof(ThreadInfo))), SeekOrigin.Begin);
-                    tl_data = new byte[Marshal.SizeOf(typeof(ThreadInfo))];
-                    fs.Read(tl_data, 0, tl_data.Length);
-                    ThreadInfo t_info = MarshalBytesTo<ThreadInfo>(tl_data);
-                    Console.WriteLine("[+]\t  ThreadId:\t\t0x" + t_info.ThreadId.ToString("X"));
-                    Console.WriteLine("[+]\t  SuspendCount:\t\t" + t_info.SuspendCount);
-                    Console.WriteLine("[+]\t  PriorityClass:\t" + t_info.PriorityClass);
-                    Console.WriteLine("[+]\t  Priority:\t\t" + t_info.Priority);
-                    Console.WriteLine("[+]\t  Teb:\t\t\t0x" + t_info.Teb.ToString("X"));
-                    Console.WriteLine("[+]\t  unknown1:\t\t" + t_info.unknown1);
-                    Console.WriteLine("[+]\t  unknown2:\t\t" + t_info.unknown2);
-                    Console.WriteLine("[+]\t  unknown3:\t\t" + t_info.unknown3);
-                    Console.WriteLine("[+]\t  unknown4:\t\t" + t_info.unknown4);
-                    Console.WriteLine("[+]\t  unknown5:\t\t" + t_info.unknown5);
-                    Console.WriteLine("[+]\t  unknown6:\t\t" + t_info.unknown6);
+                    Console.WriteLine("[+]\tModule " + (i + 1));
+                    fs.Seek((streamInfo.Location + 4 + i * moduleinfo_size), SeekOrigin.Begin);
+                    byte[] mi_data = new byte[moduleinfo_size];
+                    fs.Read(mi_data, 0, mi_data.Length);
+                    ModuleInfo module_info = MarshalBytesTo<ModuleInfo>(mi_data);
+                    Console.WriteLine("[+]\t   BaseAddress:\t\t0x" + module_info.BaseAddress.ToString("X"));
+                    Console.WriteLine("[+]\t   Size:\t\t0x" + module_info.Size.ToString("X"));
+                    Console.WriteLine("[+]\t   u1:\t\t\t0x" + module_info.u1.ToString("X"));
+                    Console.WriteLine("[+]\t   Timestamp:\t\t0x" + module_info.Timestamp.ToString("X"));
+                    Console.WriteLine("[+]\t   PointerName:\t\t0x" + module_info.PointerName.ToString("X"));
+                    Console.WriteLine("[+]\t   u2:\t\t\t0x" + module_info.u2.ToString("X"));
+                    Console.WriteLine("[+]\t   u3:\t\t\t0x" + module_info.u3.ToString("X"));
+                    Console.WriteLine("[+]\t   u4:\t\t\t0x" + module_info.u4.ToString("X"));
+                    Console.WriteLine("[+]\t   u5:\t\t\t0x" + module_info.u5.ToString("X"));
+                    Console.WriteLine("[+]\t   u6:\t\t\t0x" + module_info.u6.ToString("X"));
+                    Console.WriteLine("[+]\t   u7:\t\t\t0x" + module_info.u7.ToString("X"));
+                    Console.WriteLine("[+]\t   u8:\t\t\t0x" + module_info.u8.ToString("X"));
+                    Console.WriteLine("[+]\t   u9:\t\t\t0x" + module_info.u9.ToString("X"));
+                    Console.WriteLine("[+]\t   u10:\t\t\t0x" + module_info.u10.ToString("X"));
+                    Console.WriteLine("[+]\t   u11:\t\t\t0x" + module_info.u11.ToString("X"));
+                    Console.WriteLine("[+]\t   u12:\t\t\t0x" + module_info.u12.ToString("X"));
                 }
-                */
             }
         }
-        // Console.WriteLine("Size: " + (4 + Marshal.SizeOf(typeof(ThreadInfo)) * 7));
     }
 
 
@@ -280,8 +348,8 @@ class test
 
     static void Main(string[] args)
     {
-        // string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_procdump.dmp"; // Ruta al archivo Minidump
-        string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\lsass.exe.dmp";
+        string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_procdump.dmp"; // Ruta al archivo Minidump
+        // string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\lsass.exe.dmp";
         Console.WriteLine("[+] Minidump: " + minidumpFilePath);
 
         // Leer el archivo Minidump
@@ -326,10 +394,10 @@ class test
                 }                
             }
             // Console.WriteLine("[+] Stream directory ends at: \t0x" + ((int)((int)header.StreamDirectoryRva + Marshal.SizeOf(typeof(MinidumpStreamDirectoryEntry)) * (int)header.NumberOfStreams)).ToString("X") );
-            ParseSystemInfoStream(streamInfoList, fs);
-            ParseThreadListStream(streamInfoList, fs);
-            ParseThreadInfoListStream(streamInfoList, fs);
-            // ParseModuleListStream(streamInfoList, fs);
+            // ParseSystemInfoStream(streamInfoList, fs);
+            // ParseThreadListStream(streamInfoList, fs);
+            // ParseThreadInfoListStream(streamInfoList, fs);
+            ParseModuleListStream(streamInfoList, fs);
         }
     }
 
