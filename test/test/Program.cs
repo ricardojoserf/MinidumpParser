@@ -118,39 +118,36 @@ public struct ModuleInfo
 
 public struct MemoryInfoListStream
 {
-    public uint NumberOfEntries;  // Número de entradas en la lista de información de memoria
+    public uint u1;
+    public uint u2;
+    public ulong NumberOfEntries;  // Número de entradas en la lista de información de memoria
     public MemoryInfo[] MemoryInfoEntries;  // Array de información sobre cada región de memoria
 }
 
 public struct MemoryInfo
 {
-    public IntPtr BaseAddress;  // Dirección base de la región de memoria
-    public IntPtr AllocationBase;  // Dirección base de la asignación de la región de memoria
-    public uint AllocationProtect;  // Protección de la asignación de la región de memoria
-    public uint RegionSize;  // Tamaño de la región de memoria
-    public uint State;  // Estado de la región de memoria
-    public uint Protect;  // Protección de la región de memoria
-    public uint Type;  // Tipo de la región de memoria
+    public IntPtr BaseAddress;
+    public IntPtr AllocationBase;
+    public IntPtr AllocationProtect;
+    public IntPtr RegionSize;
+    public uint State;
+    public uint Protect;
+    public uint Type;
+    public uint u1;
 }
 
 
 public struct Memory64ListStream
 {
     public ulong NumberOfEntries;  // Número de entradas en la lista de información de memoria
+    public uint u1;
     public Memory64Info[] MemoryInfoEntries;  // Array de información sobre cada región de memoria
 }
 
 public struct Memory64Info
 {
-    public ulong BaseAddress;  // Dirección base de la región de memoria
-    public ulong AllocationBase;  // Dirección base de la asignación de la región de memoria
-    public uint AllocationProtect;  // Protección de la asignación de la región de memoria
-    public uint __alignment1;
-    public ulong RegionSize;  // Tamaño de la región de memoria
-    public uint State;  // Estado de la región de memoria
-    public uint Protect;  // Protección de la región de memoria
-    public uint Type;  // Tipo de la región de memoria
-    public uint __alignment2;
+    public IntPtr Address;
+    public IntPtr Size;
 }
 
 
@@ -164,6 +161,79 @@ class test
         T theStructure = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
         handle.Free();
         return theStructure;
+    }
+
+
+    public static void ParseMemoryInfoListStream(List<MinidumpStreamDirectoryEntry> streamInfoList, FileStream fs)
+    {
+        foreach (var streamInfo in streamInfoList)
+        {
+            string streamTypeName = GetStreamTypeName(streamInfo.StreamType);
+            if (streamTypeName == "MemoryInfoListStream")
+            {
+                Console.WriteLine("\n[+] Reading MemoryInfoListStream at 0x" + streamInfo.Location.ToString("X"));
+                fs.Seek(streamInfo.Location, SeekOrigin.Begin);
+                byte[] mil_data = new byte[16];
+                fs.Read(mil_data, 0, mil_data.Length);
+                MemoryInfoListStream mil_stream = MarshalBytesTo<MemoryInfoListStream>(mil_data);
+                int number_of_entries = (int)mil_stream.NumberOfEntries;                
+                Console.WriteLine("NumberOfEntries: \t" + number_of_entries);
+
+                for (int i = 0; i < (int)number_of_entries; i++)
+                {
+                    Console.WriteLine("[+]\tEntry " + (i + 1));
+                    fs.Seek((streamInfo.Location + 16 + i * Marshal.SizeOf(typeof(MemoryInfo))), SeekOrigin.Begin);
+                    // Memory64Info
+                    byte[] mi_data = new byte[Marshal.SizeOf(typeof(MemoryInfo))];
+                    fs.Read(mi_data, 0, mi_data.Length);
+                    MemoryInfo mi = MarshalBytesTo<MemoryInfo>(mi_data);
+                    Console.WriteLine("[+]\t   BaseAddress: \t0x" + mi.BaseAddress.ToString("X"));
+                    Console.WriteLine("[+]\t   AllocationBase: \t0x" + mi.AllocationBase.ToString("X"));
+                    Console.WriteLine("[+]\t   AllocationProtect: \t0x" + mi.AllocationProtect.ToString("X"));
+                    Console.WriteLine("[+]\t   RegionSize: \t\t0x" + mi.RegionSize.ToString("X"));
+                    Console.WriteLine("[+]\t   State: \t\t0x" + mi.State.ToString("X"));
+                    Console.WriteLine("[+]\t   Protect: \t\t0x" + mi.Protect.ToString("X"));
+                    Console.WriteLine("[+]\t   Type: \t\t0x" + mi.Type.ToString("X"));
+                    Console.WriteLine("[+]\t   u1: \t\t\t0x" + mi.u1.ToString("X"));
+
+                }
+                int last_address = (int)(streamInfo.Location + 16 + (int)number_of_entries * Marshal.SizeOf(typeof(MemoryInfo)) - 1);
+                Console.WriteLine("[+] \tLast address: \t0x" + last_address.ToString("X"));
+            }
+        }
+    }
+
+    public static void ParseMemory64ListStream(List<MinidumpStreamDirectoryEntry> streamInfoList, FileStream fs)
+    {
+        foreach (var streamInfo in streamInfoList)
+        {
+            string streamTypeName = GetStreamTypeName(streamInfo.StreamType);
+            if (streamTypeName == "Memory64ListStream")
+            {
+                Console.WriteLine("\n[+] Reading Memory64ListStream at 0x" + streamInfo.Location.ToString("X"));
+                fs.Seek(streamInfo.Location, SeekOrigin.Begin);
+                byte[] ml_data = new byte[12];
+                fs.Read(ml_data, 0, ml_data.Length);
+                Memory64ListStream ml_stream = MarshalBytesTo<Memory64ListStream>(ml_data);
+                ulong number_of_entries = (ulong)ml_stream.NumberOfEntries;
+                Console.WriteLine("NumberOfEntries: \t" + number_of_entries);
+                Console.WriteLine("u1: \t\t" + ml_stream.u1.ToString("X"));
+
+                for (int i = 0; i < (int)number_of_entries; i++)
+                {
+                    Console.WriteLine("[+]\tEntry " + (i + 1));
+                    fs.Seek((streamInfo.Location + 16 + i * Marshal.SizeOf(typeof(Memory64Info))), SeekOrigin.Begin);
+                    // Memory64Info
+                    byte[] m64i_data = new byte[Marshal.SizeOf(typeof(Memory64Info))];
+                    fs.Read(m64i_data, 0, m64i_data.Length);
+                    Memory64Info m64i = MarshalBytesTo<Memory64Info>(m64i_data);
+                    Console.WriteLine("[+]\t   Address: \t0x" + m64i.Address.ToString("X"));
+                    Console.WriteLine("[+]\t   Size: \t0x" + m64i.Size.ToString("X"));
+                }
+                int last_address = (int)(streamInfo.Location + 16 + (int)number_of_entries * Marshal.SizeOf(typeof(Memory64Info)) - 1);
+                Console.WriteLine("[+] \tLast address: \t0x" + last_address.ToString("X"));
+            }
+        }
     }
 
 
@@ -394,10 +464,12 @@ class test
                 }                
             }
             // Console.WriteLine("[+] Stream directory ends at: \t0x" + ((int)((int)header.StreamDirectoryRva + Marshal.SizeOf(typeof(MinidumpStreamDirectoryEntry)) * (int)header.NumberOfStreams)).ToString("X") );
-            // ParseSystemInfoStream(streamInfoList, fs);
-            // ParseThreadListStream(streamInfoList, fs);
-            // ParseThreadInfoListStream(streamInfoList, fs);
+            ParseSystemInfoStream(streamInfoList, fs);
+            ParseThreadListStream(streamInfoList, fs);
+            ParseThreadInfoListStream(streamInfoList, fs);
             ParseModuleListStream(streamInfoList, fs);
+            ParseMemory64ListStream(streamInfoList, fs);
+            ParseMemoryInfoListStream(streamInfoList, fs);
         }
     }
 
