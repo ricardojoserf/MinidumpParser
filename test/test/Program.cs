@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
+using System.Text;
 
 public struct MinidumpHeader
 {
@@ -167,6 +167,28 @@ public struct UnloadedModuleInfo
 }
 
 
+public struct MiscInfoStream
+{
+    public uint MiscInfoStreamSize;
+    public uint Flags;
+    public uint ProcessId;
+    public uint ProcessCreateTime;
+    public uint ProcessUserTime;
+    public uint ProcessKernelTime;
+    public uint ProcessorMaxMhz;
+    public uint ProcessorCurrentMhz;
+    public uint ProcessorMhzLimit;
+    public uint ProcessorMaxIdleState;
+    public uint ProcessorCurrentIdleState;
+    public uint ProcessIntegrityLevel;
+    public uint ProcessExecuteFlags;
+    public uint ProtectedProcess;
+    public uint TimeZoneId;
+    public uint TimeZoneBias;
+    // public byte[] rest;
+}
+
+
 class test
 {
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
@@ -179,10 +201,54 @@ class test
         return theStructure;
     }
 
-
-    public static void ParseFunctionTableStream(FileStream fs, MinidumpStreamDirectoryEntry streamInfo)
+    
+    static string GetCleanString(byte[] byteArray)
     {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        // Filter out non-printable characters and create a string from printable characters
+        for (int i = 0; i < byteArray.Length - 1; i += 2)
+        {
+            ushort unicodeChar = BitConverter.ToUInt16(byteArray, i);
+
+            // Check if the character is printable
+            if (unicodeChar >= 0x20 && unicodeChar <= 0x7E)
+            {
+                stringBuilder.Append((char)unicodeChar);
+            }
+        }
+        return stringBuilder.ToString();
+    }
+
+
+    public static void ParseMiscInfoStream(FileStream fs, MinidumpStreamDirectoryEntry streamInfo)
+    {
+        fs.Seek(streamInfo.Location, SeekOrigin.Begin);
+        byte[] miscinfo_data = new byte[streamInfo.Size];
+        fs.Read(miscinfo_data, 0, miscinfo_data.Length);
+        MiscInfoStream miscinfo_stream = MarshalBytesTo<MiscInfoStream>(miscinfo_data);
+        Console.WriteLine("[+]\tMiscInfoStreamSize: \t\t0x" + miscinfo_stream.MiscInfoStreamSize.ToString("X") + " (" + miscinfo_stream.MiscInfoStreamSize + ")");
+        Console.WriteLine("[+]\tFlags: \t\t\t\t0x" + miscinfo_stream.Flags.ToString("X") + " (" + miscinfo_stream.Flags + ")");
+        Console.WriteLine("[+]\tProcessId: \t\t\t0x" + miscinfo_stream.ProcessId.ToString("X") + " (" + miscinfo_stream.ProcessId + ")");
+        Console.WriteLine("[+]\tProcessCreateTime: \t\t0x" + miscinfo_stream.ProcessCreateTime.ToString("X") + " (" + miscinfo_stream.ProcessCreateTime + ")");
+        Console.WriteLine("[+]\tProcessUserTime: \t\t0x" + miscinfo_stream.ProcessUserTime.ToString("X"));
+        Console.WriteLine("[+]\tProcessKernelTime: \t\t0x" + miscinfo_stream.ProcessKernelTime.ToString("X"));
+        Console.WriteLine("[+]\tProcessorMaxMhz: \t\t0x" + miscinfo_stream.ProcessorMaxMhz.ToString("X"));
+        Console.WriteLine("[+]\tProcessorCurrentMhz: \t\t0x" + miscinfo_stream.ProcessorCurrentMhz.ToString("X"));
+        Console.WriteLine("[+]\tProcessorMhzLimit: \t\t0x" + miscinfo_stream.ProcessorMhzLimit.ToString("X"));
+        Console.WriteLine("[+]\tProcessorMaxIdleState: \t\t0x" + miscinfo_stream.ProcessorMaxIdleState.ToString("X"));
+        Console.WriteLine("[+]\tProcessorCurrentIdleState: \t0x" + miscinfo_stream.ProcessorCurrentIdleState.ToString("X"));
+        Console.WriteLine("[+]\tProcessIntegrityLevel: \t\t0x" + miscinfo_stream.ProcessIntegrityLevel.ToString("X"));
+        Console.WriteLine("[+]\tProcessExecuteFlags: \t\t0x" + miscinfo_stream.ProcessExecuteFlags.ToString("X"));
+        Console.WriteLine("[+]\tProtectedProcess: \t\t0x" + miscinfo_stream.ProtectedProcess.ToString("X"));
+        Console.WriteLine("[+]\tTimeZoneId: \t\t\t0x" + miscinfo_stream.TimeZoneId.ToString("X"));
+        Console.WriteLine("[+]\tTimeZoneBias: \t\t\t0x" + miscinfo_stream.TimeZoneBias.ToString("X"));
         
+        fs.Seek(streamInfo.Location + Marshal.SizeOf(typeof(MiscInfoStream)), SeekOrigin.Begin);
+        byte[] unicode_data = new byte[streamInfo.Size - Marshal.SizeOf(typeof(MiscInfoStream))];
+        fs.Read(unicode_data, 0, unicode_data.Length);
+        string other_strings = GetCleanString(unicode_data);
+        Console.WriteLine("[+]\tOther strings:\t\t\t" + other_strings);
     }
 
 
@@ -243,21 +309,12 @@ class test
 
         for (int i = 0; i < (int)number_of_entries; i++)
         {
-            Console.WriteLine("[+]\tEntry " + (i + 1));
             fs.Seek((streamInfo.Location + 16 + i * Marshal.SizeOf(typeof(MemoryInfo))), SeekOrigin.Begin);
             // Memory64Info
             byte[] mi_data = new byte[Marshal.SizeOf(typeof(MemoryInfo))];
             fs.Read(mi_data, 0, mi_data.Length);
             MemoryInfo mi = MarshalBytesTo<MemoryInfo>(mi_data);
-            Console.WriteLine("[+]\t   BaseAddress: \t0x" + mi.BaseAddress.ToString("X"));
-            Console.WriteLine("[+]\t   AllocationBase: \t0x" + mi.AllocationBase.ToString("X"));
-            Console.WriteLine("[+]\t   AllocationProtect: \t0x" + mi.AllocationProtect.ToString("X"));
-            Console.WriteLine("[+]\t   RegionSize: \t\t0x" + mi.RegionSize.ToString("X"));
-            Console.WriteLine("[+]\t   State: \t\t0x" + mi.State.ToString("X"));
-            Console.WriteLine("[+]\t   Protect: \t\t0x" + mi.Protect.ToString("X"));
-            Console.WriteLine("[+]\t   Type: \t\t0x" + mi.Type.ToString("X"));
-            Console.WriteLine("[+]\t   u1: \t\t\t0x" + mi.u1.ToString("X"));
-
+            Console.WriteLine("[+]\tEntry " + (i + 1).ToString("00") + "\tBaseAddress: 0x" + mi.BaseAddress.ToString("X12") + "  AllocationBase: 0x" + mi.AllocationBase.ToString("X12") + "  AllocationProtect: 0x" + mi.AllocationProtect.ToString("X2") + "  RegionSize: 0x" + mi.RegionSize.ToString("X12") + "  State: 0x" + mi.State.ToString("X6") + "  Protect: 0x" + mi.Protect.ToString("X2") + "  Type: 0x" + mi.Type.ToString("X") ); // + " u1: 0x" + mi.u1.ToString("X"));
         }
         int last_address = (int)(streamInfo.Location + 16 + (int)number_of_entries * Marshal.SizeOf(typeof(MemoryInfo)) - 1);
         Console.WriteLine("[+] \tLast address: \t0x" + last_address.ToString("X"));
@@ -270,19 +327,15 @@ class test
         fs.Read(ml_data, 0, ml_data.Length);
         Memory64ListStream ml_stream = MarshalBytesTo<Memory64ListStream>(ml_data);
         ulong number_of_entries = (ulong)ml_stream.NumberOfEntries;
-        Console.WriteLine("NumberOfEntries: \t" + number_of_entries);
-        Console.WriteLine("u1: \t\t" + ml_stream.u1.ToString("X"));
-
+        Console.WriteLine("[+] NumberOfEntries: \t" + number_of_entries);
+        // Console.WriteLine("u1: \t\t" + ml_stream.u1.ToString("X"));
         for (int i = 0; i < (int)number_of_entries; i++)
         {
-            Console.WriteLine("[+]\tEntry " + (i + 1));
             fs.Seek((streamInfo.Location + 16 + i * Marshal.SizeOf(typeof(Memory64Info))), SeekOrigin.Begin);
-            // Memory64Info
             byte[] m64i_data = new byte[Marshal.SizeOf(typeof(Memory64Info))];
             fs.Read(m64i_data, 0, m64i_data.Length);
             Memory64Info m64i = MarshalBytesTo<Memory64Info>(m64i_data);
-            Console.WriteLine("[+]\t   Address: \t0x" + m64i.Address.ToString("X"));
-            Console.WriteLine("[+]\t   Size: \t0x" + m64i.Size.ToString("X"));
+            Console.WriteLine("[+]\tEntry " + (i + 1).ToString("00") + "\tAddress: \t0x" + m64i.Address.ToString("X") + "\tSize: \t0x" + m64i.Size.ToString("X"));
         }
         int last_address = (int)(streamInfo.Location + 16 + (int)number_of_entries * Marshal.SizeOf(typeof(Memory64Info)) - 1);
         Console.WriteLine("[+] \tLast address: \t0x" + last_address.ToString("X"));
@@ -308,9 +361,12 @@ class test
             ModuleInfo module_info = MarshalBytesTo<ModuleInfo>(mi_data);
             Console.WriteLine("[+]\t   BaseAddress:\t\t0x" + module_info.BaseAddress.ToString("X"));
             Console.WriteLine("[+]\t   Size:\t\t0x" + module_info.Size.ToString("X"));
+            /*
             Console.WriteLine("[+]\t   u1:\t\t\t0x" + module_info.u1.ToString("X"));
+            */
             Console.WriteLine("[+]\t   Timestamp:\t\t0x" + module_info.Timestamp.ToString("X"));
             Console.WriteLine("[+]\t   PointerName:\t\t0x" + module_info.PointerName.ToString("X"));
+            /*
             Console.WriteLine("[+]\t   u2:\t\t\t0x" + module_info.u2.ToString("X"));
             Console.WriteLine("[+]\t   u3:\t\t\t0x" + module_info.u3.ToString("X"));
             Console.WriteLine("[+]\t   u4:\t\t\t0x" + module_info.u4.ToString("X"));
@@ -322,7 +378,7 @@ class test
             Console.WriteLine("[+]\t   u10:\t\t\t0x" + module_info.u10.ToString("X"));
             Console.WriteLine("[+]\t   u11:\t\t\t0x" + module_info.u11.ToString("X"));
             Console.WriteLine("[+]\t   u12:\t\t\t0x" + module_info.u12.ToString("X"));
-
+            */
             // Get unicode length from UNICODE_STRING struct
             fs.Seek(module_info.PointerName, SeekOrigin.Begin);
             byte[] dll_name_length_data = new byte[2];
@@ -333,7 +389,7 @@ class test
             fs.Seek(module_info.PointerName + 4, SeekOrigin.Begin);
             byte[] name_unicode_bytes = new byte[dll_name_length];
             fs.Read(name_unicode_bytes, 0, name_unicode_bytes.Length);
-            string name_unicode = System.Text.Encoding.Unicode.GetString(name_unicode_bytes);
+            string name_unicode = Encoding.Unicode.GetString(name_unicode_bytes);
             Console.WriteLine("[+]\t   Name:\t\t" + name_unicode);
 
         }
@@ -351,7 +407,6 @@ class test
         Console.WriteLine("test2: " + tis_stream.test2.ToString("X"));
         Console.WriteLine("test3: " + tis_stream.test3.ToString("X"));
         */
-        //if (tis_stream.test1 == 12) {
         int number_threads = (int)tis_stream.test3;
         Console.WriteLine("[+]\tNumberOfThreads: \t" + number_threads);
         for (int i = 0; i < number_threads; i++)
@@ -371,7 +426,6 @@ class test
             Console.WriteLine("[+]\t  StartAddress:\t\t0x" + tis_element.StartAddress.ToString("X"));
             Console.WriteLine("[+]\t  Affinity:\t\t0x" + tis_element.Affinity.ToString("X"));
         }
-        //}
     }
 
 
@@ -398,12 +452,14 @@ class test
             Console.WriteLine("[+]\t  PriorityClass:\t" + t_info.PriorityClass);
             Console.WriteLine("[+]\t  Priority:\t\t" + t_info.Priority);
             Console.WriteLine("[+]\t  Teb:\t\t\t0x" + t_info.Teb.ToString("X"));
+            /*
             Console.WriteLine("[+]\t  unknown1:\t\t" + t_info.unknown1);
             Console.WriteLine("[+]\t  unknown2:\t\t" + t_info.unknown2);
             Console.WriteLine("[+]\t  unknown3:\t\t" + t_info.unknown3);
             Console.WriteLine("[+]\t  unknown4:\t\t" + t_info.unknown4);
             Console.WriteLine("[+]\t  unknown5:\t\t" + t_info.unknown5);
             Console.WriteLine("[+]\t  unknown6:\t\t" + t_info.unknown6);
+            */
         }
         // Console.WriteLine("Size: " + (4 + Marshal.SizeOf(typeof(ThreadInfo)) * 7));
     }
@@ -453,10 +509,12 @@ class test
 
     static void Main(string[] args)
     {
-        string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_procdump.dmp";
-        // string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_processhacker.dmp";
+        // string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_procdump.dmp";
+        // string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\example.dmp";
+        //string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_processhacker.dmp";
         // string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\Dumb\\Dumb_taskmanager.dmp";
         // string minidumpFilePath = "C:\\Users\\ricardo\\Desktop\\Minidumps\\lsass.exe.dmp";
+        string minidumpFilePath = args[0];
         Console.WriteLine("[+] Minidump: \t" + minidumpFilePath);
 
         // Leer el archivo Minidump
@@ -507,8 +565,7 @@ class test
                 if (streamInfo.Location != 0)
                 {
                     string streamTypeName = GetStreamTypeName(streamInfo.StreamType);
-                    /*
-                    Console.WriteLine("[+] \tAddress: 0x" + streamInfo.Location.ToString("X4") + " - 0x" + (streamInfo.Location + streamInfo.Size - 1).ToString("X4") + " \t Size: " + streamInfo.Size + " \t Stream Type: " + streamTypeName + " (" + streamInfo.StreamType + ")");
+                    // Console.WriteLine("[+] \tAddress: 0x" + streamInfo.Location.ToString("X4") + " - 0x" + (streamInfo.Location + streamInfo.Size - 1).ToString("X4") + " \t Size: " + streamInfo.Size + " \t Stream Type: " + streamTypeName + " (" + streamInfo.StreamType + ")");
                     if (streamTypeName == "SystemInfoStream")
                     {
                         Console.WriteLine("\n[+] Reading SystemInfoStream at 0x" + streamInfo.Location.ToString("X"));
@@ -549,14 +606,19 @@ class test
                         Console.WriteLine("\n[+] Reading CommentStreamW at 0x" + streamInfo.Location.ToString("X"));
                         ParseCommentStreamW(fs, streamInfo);
                     }
-                    */
-                    if (streamTypeName == "MiscInfoStream")
-                    { 
+                    else if (streamTypeName == "MiscInfoStream")
+                    {
+                        Console.WriteLine("\n[+] Reading MiscInfoStream at 0x" + streamInfo.Location.ToString("X"));
+                        ParseMiscInfoStream(fs, streamInfo);
+                    }
+                    
+                    /*
+                    if (streamTypeName == "test")
+                    {
                     }
                     else if (streamTypeName == "FunctionTableStream")
                     {
                         // Console.WriteLine("\n[+] Reading FunctionTableStream at 0x" + streamInfo.Location.ToString("X"));
-                        // ParseFunctionTableStream(fs, streamInfo);
                     }
                     else if (streamTypeName == "TokenStream")
                     {
@@ -568,9 +630,9 @@ class test
                     }
                     else if (streamTypeName == "HandleDataStream")
                     {
-                        Console.WriteLine("\n[+] Reading HandleDataStream at 0x" + streamInfo.Location.ToString("X"));
+                        // Console.WriteLine("\n[+] Reading HandleDataStream at 0x" + streamInfo.Location.ToString("X"));
                     }
-                    
+                    */
                 }
             }
         }
