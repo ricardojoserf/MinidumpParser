@@ -1,8 +1,0 @@
-C:\Users\ricardo\Desktop\test\test\obj\x64\Release\test.csproj.AssemblyReference.cache
-C:\Users\ricardo\Desktop\test\test\obj\x64\Release\test.csproj.SuggestedBindingRedirects.cache
-C:\Users\ricardo\Desktop\test\test\obj\x64\Release\test.csproj.CoreCompileInputs.cache
-C:\Users\ricardo\Desktop\test\test\bin\x64\Release\test.exe.config
-C:\Users\ricardo\Desktop\test\test\bin\x64\Release\test.exe
-C:\Users\ricardo\Desktop\test\test\bin\x64\Release\test.pdb
-C:\Users\ricardo\Desktop\test\test\obj\x64\Release\test.exe
-C:\Users\ricardo\Desktop\test\test\obj\x64\Release\test.pdb
