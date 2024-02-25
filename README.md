@@ -37,9 +37,9 @@ Parse Minidump files using C#
 
 ![UnloadedModuleList](https://raw.githubusercontent.com/ricardojoserf/ricardojoserf.github.io/master/images/minidumpparser/UnloadedModuleList.png)
 
-## MemoryInfo Stream
+## MemoryInfoList Stream
 
-![MemoryInfo](https://raw.githubusercontent.com/ricardojoserf/ricardojoserf.github.io/master/images/minidumpparser/MemoryInfo.png)
+![MemoryInfoList](https://raw.githubusercontent.com/ricardojoserf/ricardojoserf.github.io/master/images/minidumpparser/MemoryInfoList.png)
 
 ## Memory64List Stream
 
