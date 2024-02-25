@@ -137,7 +137,7 @@ namespace MinidumpParser
         public struct Memory64ListStream
         {
             public ulong NumberOfEntries; 
-            public uint u1;
+            public uint MemoryRegionsBaseAddress;
             public Memory64Info[] MemoryInfoEntries;
         }
 
