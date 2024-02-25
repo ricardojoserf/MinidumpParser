@@ -49,10 +49,11 @@ namespace MinidumpParser
             fs.Read(uml_data, 0, uml_data.Length);
             UnloadedModuleListStream uml_stream = MarshalBytesTo<UnloadedModuleListStream>(uml_data);
             int number_of_modules = (int)uml_stream.NumberOfModules;
-            Console.WriteLine("[+] u1: \t\t0x" + uml_stream.u1.ToString("X"));
-            Console.WriteLine("[+] u2: \t\t0x" + uml_stream.u2.ToString("X"));
+            Console.WriteLine("[+] Field 1: \t\t0x" + uml_stream.u1.ToString("X"));
+            Console.WriteLine("[+] Field 2: \t\t0x" + uml_stream.u2.ToString("X"));
             Console.WriteLine("[+] NumberOfModules: \t" + number_of_modules);
-            for (int i = 0; i < (int)number_of_modules; i++)
+            Console.WriteLine(String.Format("|{0,15}|{1,20}|{2,15}|{3,15}|{4,15}|{5,40}|", centeredString("Module", 15), centeredString("BaseAddress", 20), centeredString("Size", 15), centeredString("u1", 15), centeredString("u2", 15), centeredString("Name", 40)));
+            for (int i = 0; i < number_of_modules; i++)
             {
                 fs.Seek((streamInfo.Location + 12 + i * Marshal.SizeOf(typeof(UnloadedModuleInfo))), SeekOrigin.Begin);
                 byte[] umi_data = new byte[Marshal.SizeOf(typeof(UnloadedModuleInfo))];
@@ -70,7 +71,9 @@ namespace MinidumpParser
                 byte[] name_unicode_bytes = new byte[dll_name_length];
                 fs.Read(name_unicode_bytes, 0, name_unicode_bytes.Length);
                 string name_unicode = Encoding.Unicode.GetString(name_unicode_bytes);
-                Console.WriteLine("[+]\tModule " + (i + 1) + "\t BaseAddress: 0x" + umi.BaseAddress.ToString("X") + "\tSize: 0x" + umi.Size.ToString("X") + "\t   u1: 0x" + umi.u1.ToString("X") + "\tu2: 0x" + umi.u2.ToString("X") + "\t   Name: " + name_unicode);
+
+                // Console.WriteLine("[+]\tModule " + (i + 1) + "\t BaseAddress: 0x" + umi.BaseAddress.ToString("X") + "\tSize: 0x" + umi.Size.ToString("X") + "\t   u1: 0x" + umi.u1.ToString("X") + "\tu2: 0x" + umi.u2.ToString("X") + "\t   Name: " + name_unicode);
+                Console.WriteLine(String.Format("|{0,15}|{1,20}|{2,15}|{3,15}|{4,15}|{5,40}|", centeredString((i + 1).ToString(), 15), centeredString("0x"+umi.BaseAddress.ToString("X"), 20), centeredString("0x"+umi.Size.ToString("X"), 15), centeredString("0x"+umi.u1.ToString("X"), 15), centeredString("0x"+umi.u2.ToString("X"), 15), centeredString(name_unicode, 40)));
             }
         }
 
@@ -80,7 +83,7 @@ namespace MinidumpParser
             fs.Seek(streamInfo.Location, SeekOrigin.Begin);
             byte[] csw_data = new byte[streamInfo.Size];
             fs.Read(csw_data, 0, csw_data.Length);
-            string csw_stream = System.Text.Encoding.Unicode.GetString(csw_data);
+            string csw_stream = Encoding.Unicode.GetString(csw_data);
             Console.WriteLine(csw_stream);
         }
 
@@ -93,6 +96,7 @@ namespace MinidumpParser
             MemoryInfoListStream mil_stream = MarshalBytesTo<MemoryInfoListStream>(mil_data);
             int number_of_entries = (int)mil_stream.NumberOfEntries;
             Console.WriteLine("[+] NumberOfEntries: \t" + number_of_entries);
+            Console.WriteLine(String.Format("|{0,10}|{1,20}|{2,20}|{3,20}|{4,16}|{5,10}|{6,10}|{7,12}|", centeredString("Entry", 10), centeredString("BaseAddress", 20), centeredString("AllocationBase", 20), centeredString("AllocationProtect", 20), centeredString("RegionSize", 16), centeredString("State", 10), centeredString("Protect", 10), centeredString("Type", 12)));
 
             for (int i = 0; i < (int)number_of_entries; i++)
             {
@@ -100,7 +104,8 @@ namespace MinidumpParser
                 byte[] mi_data = new byte[Marshal.SizeOf(typeof(MemoryInfo))];
                 fs.Read(mi_data, 0, mi_data.Length);
                 MemoryInfo mi = MarshalBytesTo<MemoryInfo>(mi_data);
-                Console.WriteLine("[+]\tEntry " + (i + 1).ToString("00") + "\tBaseAddress: 0x" + mi.BaseAddress.ToString("X12") + "  AllocationBase: 0x" + mi.AllocationBase.ToString("X12") + "  AllocationProtect: 0x" + mi.AllocationProtect.ToString("X2") + "  RegionSize: 0x" + mi.RegionSize.ToString("X12") + "  State: 0x" + mi.State.ToString("X6") + "  Protect: 0x" + mi.Protect.ToString("X2") + "  Type: 0x" + mi.Type.ToString("X")); // + " u1: 0x" + mi.u1.ToString("X"));
+                // Console.WriteLine("[+]\tEntry " + (i + 1).ToString("00") + "\tBaseAddress: 0x" + mi.BaseAddress.ToString("X12") + "  AllocationBase: 0x" + mi.AllocationBase.ToString("X12") + "  AllocationProtect: 0x" + mi.AllocationProtect.ToString("X2") + "  RegionSize: 0x" + mi.RegionSize.ToString("X12") + "  State: 0x" + mi.State.ToString("X6") + "  Protect: 0x" + mi.Protect.ToString("X2") + "  Type: 0x" + mi.Type.ToString("X")); // + " u1: 0x" + mi.u1.ToString("X"));
+                Console.WriteLine(String.Format("|{0,10}|{1,20}|{2,20}|{3,20}|{4,16}|{5,10}|{6,10}|{7,12}|", centeredString((i + 1).ToString(), 10), centeredString("0x"+mi.BaseAddress.ToString("X"), 20), centeredString("0x"+mi.AllocationBase.ToString("X"), 20), centeredString("0x"+mi.AllocationProtect.ToString("X"), 20), centeredString("0x" + mi.RegionSize.ToString("X"), 16), centeredString("0x" + mi.State.ToString("X"), 10), centeredString("0x" + mi.Protect.ToString("X"), 10), centeredString("0x" + mi.Type.ToString("X"), 12)));
             }
         }
 
@@ -114,6 +119,7 @@ namespace MinidumpParser
             ulong number_of_entries = ml_stream.NumberOfEntries;
             Console.WriteLine("[+] NumberOfEntries: \t" + number_of_entries);
             Console.WriteLine("[+] Memory offset:   \t0x" + ml_stream.MemoryRegionsBaseAddress.ToString("X"));
+            Console.WriteLine(String.Format("|{0,6}|{1,20}|{2,16}|{3,16}|", centeredString("Entry", 6), centeredString("Address", 20), centeredString("Size", 16), centeredString("Offset in file", 16)));
 
             int offset = (int)ml_stream.MemoryRegionsBaseAddress;
             for (int i = 0; i < (int)number_of_entries; i++)
@@ -122,7 +128,8 @@ namespace MinidumpParser
                 byte[] m64i_data = new byte[Marshal.SizeOf(typeof(Memory64Info))];
                 fs.Read(m64i_data, 0, m64i_data.Length);
                 Memory64Info m64i = MarshalBytesTo<Memory64Info>(m64i_data);
-                Console.WriteLine("[+]\tEntry " + (i + 1).ToString("00") + "\tAddress: 0x" + m64i.Address.ToString("X12") + "\t\tSize: 0x" + m64i.Size.ToString("X") + "\t   Offset in file: 0x" + offset.ToString("X5"));
+                // Console.WriteLine("[+]\tEntry " + (i + 1).ToString("00") + "\tAddress: 0x" + m64i.Address.ToString("X12") + "\t\tSize: 0x" + m64i.Size.ToString("X") + "\t   Offset in file: 0x" + offset.ToString("X5"));
+                Console.WriteLine(String.Format("|{0,6}|{1,20}|{2,16}|{3,16}|", centeredString((i + 1).ToString(), 6), centeredString("0x"+m64i.Address.ToString("X"), 20), centeredString("0x"+m64i.Size.ToString("X"), 16), centeredString("0x"+offset.ToString("X"), 16)));
                 offset += (int)m64i.Size;
             }
         }
@@ -137,17 +144,18 @@ namespace MinidumpParser
             ModuleListStream ml_stream = MarshalBytesTo<ModuleListStream>(ml_data);
             int number_of_modules = (int)ml_stream.NumberOfModules;
             Console.WriteLine("[+] NumberOfModules: \t" + number_of_modules);
+            Console.WriteLine(String.Format("|{0,6}|{1,18}|{2,10}|{3,14}|{4,12}|{5,50}|", centeredString("Module", 6), centeredString("BaseAddress", 18), centeredString("Size", 10), centeredString("Timestamp", 14), centeredString("PointerName", 12), centeredString("Name", 50)));
 
             for (int i = 0; i < number_of_modules; i++)
             {
-                Console.WriteLine("[+]\tModule " + (i + 1));
                 fs.Seek((streamInfo.Location + 4 + i * moduleinfo_size), SeekOrigin.Begin);
                 byte[] mi_data = new byte[moduleinfo_size];
                 fs.Read(mi_data, 0, mi_data.Length);
                 ModuleInfo module_info = MarshalBytesTo<ModuleInfo>(mi_data);
-                Console.WriteLine("[+]\t   BaseAddress: 0x" + module_info.BaseAddress.ToString("X") + "\tSize: 0x" + module_info.Size.ToString("X") + "\tu1: 0x" + module_info.u1.ToString("X") + "\t\tTimestamp: 0x" + module_info.Timestamp.ToString("X") + "\tPointerName: 0x" + module_info.PointerName.ToString("X") + "\tu2: 0x" + module_info.u2.ToString("X") + "\tu3: 0x" + module_info.u3.ToString("X") + "\tu4: 0x" + module_info.u4.ToString("X"));
-                Console.WriteLine("[+]\t   u5: 0x" + module_info.u5.ToString("X") + "\tu6: 0x" + module_info.u6.ToString("X") + "\tu7: 0x" + module_info.u7.ToString("X") + "\t\tu8: t0x" + module_info.u8.ToString("X") + "\tu9: 0x" + module_info.u9.ToString("X") + "\t\tu10: 0x" + module_info.u10.ToString("X") + "\tu11: 0x" + module_info.u11.ToString("X") + "\t\tu12: 0x" + module_info.u12.ToString("X"));
-                
+                // Console.WriteLine("[+]\tModule " + (i + 1));
+                // Console.WriteLine("[+]\t   BaseAddress: 0x" + module_info.BaseAddress.ToString("X") + "\tSize: 0x" + module_info.Size.ToString("X") + "\tu1: 0x" + module_info.u1.ToString("X") + "\t\tTimestamp: 0x" + module_info.Timestamp.ToString("X") + "\tPointerName: 0x" + module_info.PointerName.ToString("X") + "\tu2: 0x" + module_info.u2.ToString("X") + "\tu3: 0x" + module_info.u3.ToString("X") + "\tu4: 0x" + module_info.u4.ToString("X"));
+                // Console.WriteLine("[+]\t   u5: 0x" + module_info.u5.ToString("X") + "\tu6: 0x" + module_info.u6.ToString("X") + "\tu7: 0x" + module_info.u7.ToString("X") + "\t\tu8: t0x" + module_info.u8.ToString("X") + "\tu9: 0x" + module_info.u9.ToString("X") + "\t\tu10: 0x" + module_info.u10.ToString("X") + "\tu11: 0x" + module_info.u11.ToString("X") + "\t\tu12: 0x" + module_info.u12.ToString("X"));
+
                 // Get unicode length from UNICODE_STRING struct
                 fs.Seek(module_info.PointerName, SeekOrigin.Begin);
                 byte[] dll_name_length_data = new byte[2];
@@ -159,7 +167,11 @@ namespace MinidumpParser
                 byte[] name_unicode_bytes = new byte[dll_name_length];
                 fs.Read(name_unicode_bytes, 0, name_unicode_bytes.Length);
                 string name_unicode = Encoding.Unicode.GetString(name_unicode_bytes);
-                Console.WriteLine("[+]\t   Name: " + name_unicode);
+                // Console.WriteLine("[+]\t   Name: " + name_unicode);
+
+                // Console.WriteLine(String.Format("|{0,8}|{1,14}|{2,10}|{3,10}|{4,10}|{5,11}|{6,10}|{7,10}|{8,10}|{9,10}|{10,10}|{11,10}|{12,10}|{13,10}|{14,10}|{15,10}|{16,10}|{17,10}|", centeredString("Module", 10), centeredString("BaseAddress", 14), centeredString("Size", 10), centeredString("u1", 10), centeredString("Timestamp", 10), centeredString("PointerName", 10), centeredString("u2", 10), centeredString("u3", 10), centeredString("u4", 10), centeredString("u5", 10), centeredString("u6", 10), centeredString("u7", 10), centeredString("u8", 10), centeredString("u9", 10), centeredString("u10", 10), centeredString("u11", 10), centeredString("u12", 10), centeredString("Name", 10)));
+                // Console.WriteLine(String.Format("|{0,8}|{1,10}|{2,10}|{3,10}|{4,10}|{5,11}|{6,10}|{7,10}|{8,10}|{9,10}|{10,10}|{11,10}|{12,10}|{13,10}|{14,10}|{15,10}|{16,10}|{17,10}|", centeredString((i + 1).ToString(), 10), centeredString("0x" + module_info.BaseAddress.ToString("X"), 10), centeredString("0x" + module_info.Size.ToString("X"), 10), centeredString("0x" + module_info.u1.ToString("X"), 10), centeredString("0x" + module_info.Timestamp.ToString("X"), 10), centeredString("0x" + module_info.PointerName.ToString("X"), 10), centeredString("0x" + module_info.u2.ToString("X"), 10), centeredString("0x" + module_info.u3.ToString("X"), 10), centeredString("0x" + module_info.u4.ToString("X"), 10), centeredString("0x" + module_info.u5.ToString("X"), 10), centeredString("0x" + module_info.u6.ToString("X"), 10), centeredString("0x" + module_info.u7.ToString("X"), 10), centeredString("0x" + module_info.u8.ToString("X"), 10), centeredString("0x" + module_info.u9.ToString("X"), 10), centeredString("0x" + module_info.u10.ToString("X"), 10), centeredString("0x" + module_info.u11.ToString("X"), 10), centeredString("0x" + module_info.u12.ToString("X"), 10), centeredString(name_unicode, 10)));
+                Console.WriteLine(String.Format("|{0,6}|{1,18}|{2,10}|{3,14}|{4,12}|{5,50}|", centeredString((i + 1).ToString(), 6), centeredString("0x" + module_info.BaseAddress.ToString("X"), 18), centeredString("0x" + module_info.Size.ToString("X5"), 10), centeredString("0x" + module_info.Timestamp.ToString("X"), 14), centeredString("0x" + module_info.PointerName.ToString("X"), 12), centeredString(name_unicode, 50)));
             }
         }
 
@@ -170,18 +182,20 @@ namespace MinidumpParser
             byte[] tis_data = new byte[12];
             fs.Read(tis_data, 0, tis_data.Length);
             ThreadInfoStream tis_stream = MarshalBytesTo<ThreadInfoStream>(tis_data);
-            Console.WriteLine("[+]\tu1:              \t0x" + tis_stream.u1.ToString("X"));
-            Console.WriteLine("[+]\tu2:              \t0x" + tis_stream.u2.ToString("X"));
             int number_threads = (int)tis_stream.NumberOfThreads;
+            Console.WriteLine("[+]\tField 1\t\t\t0x" + tis_stream.u1.ToString("X"));
+            Console.WriteLine("[+]\tField 2:\t\t0x" + tis_stream.u2.ToString("X"));
             Console.WriteLine("[+]\tNumberOfThreads: \t" + number_threads);
+            Console.WriteLine(String.Format("|{0,10}|{1,10}|{2,10}|{3,10}|{4,20}|{5,10}|{6,10}|{7,10}|{8,20}|{9,10}|", centeredString("Thread", 10), centeredString("ThreadId", 10), centeredString("Dump", 10), centeredString("ExitStatus", 10), centeredString("CreateTime", 20), centeredString("ExitTime", 10), centeredString("KernelTime", 10), centeredString("UserTime", 10), centeredString("StartAddress", 20), centeredString("Affinity", 10)));
             for (int i = 0; i < number_threads; i++)
             {
                 fs.Seek((streamInfo.Location + 12 + i * Marshal.SizeOf(typeof(ThreadInfoStream_Element))), SeekOrigin.Begin);
                 byte[] tis_element_data = new byte[Marshal.SizeOf(typeof(ThreadInfoStream_Element))];
                 fs.Read(tis_element_data, 0, tis_element_data.Length);
                 ThreadInfoStream_Element tis_element = MarshalBytesTo<ThreadInfoStream_Element>(tis_element_data);
-                Console.WriteLine("[+]\tThread " + (i + 1) + "\tThreadId: 0x" + tis_element.ThreadId.ToString("X5") + "\tDump: 0x" + tis_element.Dump.ToString("X") + "\t\tExitStatus: 0x" + tis_element.ExitStatus.ToString("X") + "\t\tCreateTime: 0x" + tis_element.CreateTime.ToString("X") + "\tExitTime: 0x" + tis_element.ExitTime.ToString("X"));
-                Console.WriteLine("[+]\t\t\tKernelTime: 0x" + tis_element.KernelTime.ToString("X5") + "\tUserTime: 0x" + tis_element.UserTime.ToString("X5") + "\tStartAddress: 0x" + tis_element.StartAddress.ToString("X") + "\tAffinity: 0x" + tis_element.Affinity.ToString("X"));
+                // Console.WriteLine("[+]\tThread " + (i + 1) + "\tThreadId: 0x" + tis_element.ThreadId.ToString("X5") + "\tDump: 0x" + tis_element.Dump.ToString("X") + "\t\tExitStatus: 0x" + tis_element.ExitStatus.ToString("X") + "\t\tCreateTime: 0x" + tis_element.CreateTime.ToString("X") + "\tExitTime: 0x" + tis_element.ExitTime.ToString("X"));
+                // Console.WriteLine("[+]\t\t\tKernelTime: 0x" + tis_element.KernelTime.ToString("X5") + "\tUserTime: 0x" + tis_element.UserTime.ToString("X5") + "\tStartAddress: 0x" + tis_element.StartAddress.ToString("X") + "\tAffinity: 0x" + tis_element.Affinity.ToString("X"));
+                Console.WriteLine(String.Format("|{0,10}|{1,10}|{2,10}|{3,10}|{4,20}|{5,10}|{6,10}|{7,10}|{8,20}|{9,10}|", centeredString((i + 1).ToString(), 10), centeredString("0x" + tis_element.ThreadId.ToString("X"), 10), centeredString("0x"+tis_element.Dump.ToString("X"), 10), centeredString("0x"+tis_element.ExitStatus.ToString("X"), 10), centeredString("0x"+ tis_element.CreateTime.ToString("X"), 20), centeredString("0x"+tis_element.ExitTime.ToString("X"), 10), centeredString("0x"+tis_element.KernelTime.ToString("X"), 10), centeredString("0x"+ tis_element.UserTime.ToString("X"), 10), centeredString("0x"+tis_element.StartAddress.ToString("X"), 20), centeredString("0x"+ tis_element.Affinity.ToString("X"), 10)));
             }
         }
 
@@ -193,6 +207,7 @@ namespace MinidumpParser
             fs.Read(tl_data, 0, tl_data.Length);
             ThreadListStream tl_stream = MarshalBytesTo<ThreadListStream>(tl_data);
             Console.WriteLine("[+] \tNumberOfThreads:\t" + tl_stream.NumberOfThreads);
+            Console.WriteLine(String.Format("|{0,10}|{1,10}|{2,15}|{3,15}|{4,10}|{5,15}|{6,10}|{7,10}|{8,10}|{9,10}|{10,10}|{11,10}|", centeredString("Thread", 10), centeredString("ThreadId", 10), centeredString("SuspendCount", 15), centeredString("PriorityClass", 15), centeredString("Priority", 10), centeredString("Teb", 15), centeredString("u1", 10), centeredString("u2", 10), centeredString("u3", 10), centeredString("u4", 10), centeredString("u5", 10), centeredString("u6", 10)));
 
             for (int i = 0; i < (int)tl_stream.NumberOfThreads; i++)
             {
@@ -200,8 +215,9 @@ namespace MinidumpParser
                 tl_data = new byte[Marshal.SizeOf(typeof(ThreadInfo))];
                 fs.Read(tl_data, 0, tl_data.Length);
                 ThreadInfo t_info = MarshalBytesTo<ThreadInfo>(tl_data);
-                Console.WriteLine("[+]\tThread " + (i + 1) + "\tThreadId: 0x" + t_info.ThreadId.ToString("X5") + "\tSuspendCount: " + t_info.SuspendCount + "\tPriorityClass: " + t_info.PriorityClass + "\tPriority: " + t_info.Priority + "\tTeb: 0x" + t_info.Teb.ToString("X"));
-                Console.WriteLine("[+]\t\t\tu1: " + t_info.u1 + "\t\tu2: " + t_info.u2 + "\t\tu3: " + t_info.u3 + "\t\tu4: " + t_info.u4 + "\t\tu5: " + t_info.u5 + "\tu6: " + t_info.u6);
+                // Console.WriteLine("[+]\tThread " + (i + 1) + "\tThreadId: 0x" + t_info.ThreadId.ToString("X5") + "\tSuspendCount: " + t_info.SuspendCount + "\tPriorityClass: " + t_info.PriorityClass + "\tPriority: " + t_info.Priority + "\tTeb: 0x" + t_info.Teb.ToString("X"));
+                // Console.WriteLine("[+]\t\t\tu1: " + t_info.u1 + "\t\tu2: " + t_info.u2 + "\t\tu3: " + t_info.u3 + "\t\tu4: " + t_info.u4 + "\t\tu5: " + t_info.u5 + "\tu6: " + t_info.u6);
+                Console.WriteLine(String.Format("|{0,10}|{1,10}|{2,15}|{3,15}|{4,10}|{5,15}|{6,10}|{7,10}|{8,10}|{9,10}|{10,10}|{11,10}|", centeredString((i + 1).ToString(), 10), centeredString("0x"+t_info.ThreadId.ToString("X"),10), centeredString(t_info.SuspendCount.ToString(),15), centeredString(t_info.PriorityClass.ToString(), 15) , centeredString(t_info.Priority.ToString(), 10), centeredString("0x" + t_info.Teb.ToString("X"), 15), centeredString("0x" + t_info.u1.ToString("X"),10), centeredString("0x" + t_info.u2.ToString("X"), 10), centeredString("0x" + t_info.u3.ToString("X"), 10), centeredString("0x" + t_info.u4.ToString("X"), 10), centeredString("0x" + t_info.u5.ToString("X"), 10), centeredString("0x" + t_info.u6.ToString("X"), 10)));
             }
         }
 
@@ -241,6 +257,18 @@ namespace MinidumpParser
             Console.WriteLine("[+]\t StreamDirectoryRva: \t0x" + header.StreamDirectoryRva.ToString("X"));
             Console.WriteLine("[+]\t CheckSum: \t\t0x" + header.CheckSum.ToString("X"));
             Console.WriteLine("[+]\t TimeDateStamp: \t" + header.TimeDateStamp);
+        }
+
+
+        static string centeredString(string s, int width)
+        {
+            if (s.Length >= width)
+            {
+                return s;
+            }
+            int leftPadding = (width - s.Length) / 2;
+            int rightPadding = width - s.Length - leftPadding;
+            return new string(' ', leftPadding) + s + new string(' ', rightPadding);
         }
 
 
